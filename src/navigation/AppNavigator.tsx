@@ -20,7 +20,8 @@ import LockScreen from "../screens/security/LockScreen";
 import UnlockScreen from "../screens/security/UnlockScreen";
 
 // Servicios
-import { getCurrentUser } from "../services/authService";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../config/firebase";
 import { isDeviceBlockedLocally } from "../services/securityService";
 
 // Tipos de navegación
@@ -117,24 +118,39 @@ const AppNavigator = () => {
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
-    // Verificar estado de autenticación y bloqueo
-    const checkAuthAndBlockStatus = async () => {
-      try {
-        // Verificar si hay un usuario autenticado
-        const user = getCurrentUser();
-        setIsAuthenticated(!!user);
+    setIsLoading(true); // Indicate loading when the effect runs
 
-        // Verificar si el dispositivo está bloqueado
+    // Subscribe to auth state changes
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+      // setLoading will be handled after block status is also checked
+    });
+
+    // Check device block status
+    const checkDeviceBlockStatus = async () => {
+      try {
         const blocked = await isDeviceBlockedLocally();
         setIsBlocked(blocked);
       } catch (error) {
-        console.error("Error al verificar estado:", error);
+        console.error("Error checking device block status:", error);
+        // Optionally set some error state here to inform the user
       } finally {
+        // This ensures loading is false after both initial auth state is processed
+        // (onAuthStateChanged fires immediately) and block status is checked.
         setIsLoading(false);
       }
     };
 
-    checkAuthAndBlockStatus();
+    checkDeviceBlockStatus();
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribeAuth();
+    };
   }, []);
 
   if (isLoading) {

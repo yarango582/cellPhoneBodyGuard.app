@@ -35,7 +35,6 @@ const sendSecurityKeyEmail = async (
 };
 
 // Clave para almacenar el token de autenticación
-const AUTH_TOKEN_KEY = "auth_token";
 const SECURITY_KEY = "security_key";
 
 /**
@@ -65,9 +64,6 @@ export const registerUser = async (
       deviceCount: 0,
       lastLogin: new Date().toISOString(),
     });
-
-    // Guardar token de autenticación
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, user.uid);
 
     // Guardar la clave de seguridad localmente para acceso rápido
     await AsyncStorage.setItem("security_key", securityKey);
@@ -123,9 +119,6 @@ export const logoutUser = async (): Promise<void> => {
   try {
     // Cerrar sesión en Firebase
     await signOut(auth);
-
-    // Limpiar datos de autenticación locales
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
 
     // Limpiar otras claves que puedan contener información sensible
     // pero mantener la clave de seguridad para poder desbloquear el dispositivo si es necesario
