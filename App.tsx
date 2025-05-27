@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PaperProvider, MD3LightTheme } from "react-native-paper";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
@@ -115,8 +116,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <AppNavigator />
+      <PaperProvider theme={MD3LightTheme}>
+        <StatusBar style="auto" />
+        <AppNavigator />
+      </PaperProvider>
     </SafeAreaProvider>
   );
 }

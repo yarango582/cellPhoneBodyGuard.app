@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ActivityIndicator, 
+  View,
+  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -15,12 +11,14 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { registerUser } from '../../services/authService';
+import { Button, TextInput as PaperTextInput, ActivityIndicator as PaperActivityIndicator, Text as PaperText, IconButton, useTheme } from 'react-native-paper';
 
 type RegisterScreenProps = {
   navigation: StackNavigationProp<any>;
 };
 
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -98,90 +96,74 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         style={styles.keyboardAvoidingView}
       >
         <ScrollView contentContainerStyle={styles.scrollView}>
-          <TouchableOpacity 
-            style={styles.backButton}
+          <IconButton
+            icon="arrow-left"
+            iconColor={theme.colors.primary}
+            size={24}
             onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
-          </TouchableOpacity>
+            style={styles.backButton}
+          />
 
           <View style={styles.header}>
-            <Text style={styles.title}>Crear cuenta</Text>
-            <Text style={styles.subtitle}>Regístrate para proteger tu dispositivo</Text>
+            <PaperText variant="headlineMedium" style={styles.title}>Crear cuenta</PaperText>
+            <PaperText variant="bodyLarge" style={styles.subtitle}>Regístrate para proteger tu dispositivo</PaperText>
           </View>
 
           <View style={styles.formContainer}>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <PaperText style={[styles.errorText, { color: theme.colors.error }]}>{error}</PaperText> : null}
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Correo electrónico"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+            <PaperTextInput
+              label="Correo electrónico"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="email-outline" />}
+              style={styles.input}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Contraseña"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity 
-                style={styles.passwordToggle}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#666" 
-                />
-              </TouchableOpacity>
-            </View>
+            <PaperTextInput
+              label="Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="lock-outline" />}
+              right={<PaperTextInput.Icon icon={showPassword ? "eye-off-outline" : "eye-outline"} onPress={() => setShowPassword(!showPassword)} />}
+              style={styles.input}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirmar contraseña"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-            </View>
+            <PaperTextInput
+              label="Confirmar contraseña"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="lock-check-outline" />}
+              style={styles.input}
+            />
 
-            <Text style={styles.securityKeyInfo}>
+            <PaperText variant="bodySmall" style={styles.securityKeyInfo}>
               Al registrarte, recibirás una clave de seguridad de 20 dígitos en tu correo electrónico. 
               Esta clave será necesaria para desbloquear tu dispositivo en caso de activación del protocolo de seguridad.
-            </Text>
+            </PaperText>
 
-            <TouchableOpacity 
-              style={styles.registerButton}
+            <Button
+              mode="contained"
               onPress={handleRegister}
+              loading={isLoading}
               disabled={isLoading}
+              style={styles.registerButton}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.registerButtonText}>Registrarse</Text>
-              )}
-            </TouchableOpacity>
+              Registrarse
+            </Button>
 
             <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.loginLink}>Inicia sesión</Text>
-              </TouchableOpacity>
+              <PaperText style={styles.loginText}>¿Ya tienes una cuenta? </PaperText>
+              <Button mode="text" onPress={() => navigation.navigate('Login')} style={styles.loginButton}>
+                Inicia sesión
+              </Button>
             </View>
           </View>
         </ScrollView>
@@ -193,7 +175,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f8f8f8', // Or theme.colors.background
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -204,27 +186,27 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   backButton: {
-    marginTop: 10,
-    padding: 5,
-    width: 40,
+    marginTop: 10, // Keep or adjust
+    // Removed padding and width, IconButton has its own sizing
+    alignSelf: 'flex-start', // Ensure it stays to the left
   },
   header: {
-    marginTop: 20,
+    marginTop: 10, // Reduced margin as IconButton takes space
     marginBottom: 30,
+    alignItems: 'center', // Center title/subtitle
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    // Handled by PaperText variant="headlineMedium"
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    // Handled by PaperText variant="bodyLarge"
     marginTop: 5,
+    textAlign: 'center',
   },
   formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: '#fff', // Or theme.colors.surface
+    borderRadius: 10, // Or theme.roundness
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -233,61 +215,43 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   errorText: {
-    color: '#ff3b30',
+    // Color from theme.colors.error
     marginBottom: 15,
     textAlign: 'center',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    marginBottom: 20,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
   input: {
-    flex: 1,
-    height: 45,
-    fontSize: 16,
-    color: '#333',
-  },
-  passwordToggle: {
-    padding: 5,
+    marginBottom: 15, // Adjusted margin
+    // Height, fontSize, color are handled by PaperTextInput
   },
   securityKeyInfo: {
-    fontSize: 14,
-    color: '#666',
+    // Handled by PaperText variant="bodySmall"
+    // color: '#666', // Or theme.colors.onSurfaceVariant
     marginBottom: 20,
     lineHeight: 20,
+    textAlign: 'center', // Improved readability
   },
   registerButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    // backgroundColor is handled by mode="contained"
+    // borderRadius is handled by Paper.Button
     height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center', // Text is centered by default
+    marginTop: 10, // Add some margin
   },
-  registerButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // registerButtonText is handled by Paper.Button
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center', // Align items for better look with Button
     marginTop: 20,
   },
   loginText: {
-    color: '#666',
+    // color: '#666', // Or theme.colors.onSurfaceVariant
     fontSize: 14,
+    marginRight: -8, // Adjust spacing with button
   },
-  loginLink: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  loginButton: {
+    // No specific styles needed if using mode="text" defaults
+  }
 });
 
 export default RegisterScreen;

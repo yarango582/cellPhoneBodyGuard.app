@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ActivityIndicator, 
-  Alert,
+  View,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView
@@ -15,12 +10,14 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { loginUser } from '../../services/authService';
+import { Button, TextInput as PaperTextInput, ActivityIndicator as PaperActivityIndicator, Text as PaperText, useTheme } from 'react-native-paper';
 
 type LoginScreenProps = {
   navigation: StackNavigationProp<any>;
 };
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -73,73 +70,59 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollView}>
           <View style={styles.header}>
-            <Ionicons name="shield-checkmark" size={80} color="#007AFF" />
-            <Text style={styles.title}>SecureWipe</Text>
-            <Text style={styles.subtitle}>Protección avanzada para tu dispositivo</Text>
+            <Ionicons name="shield-checkmark" size={80} color={theme.colors.primary} />
+            <PaperText variant="headlineMedium" style={styles.title}>SecureWipe</PaperText>
+            <PaperText variant="titleMedium" style={styles.subtitle}>Protección avanzada para tu dispositivo</PaperText>
           </View>
 
           <View style={styles.formContainer}>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <PaperText style={[styles.errorText, { color: theme.colors.error }]}>{error}</PaperText> : null}
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Correo electrónico"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+            <PaperTextInput
+              label="Correo electrónico"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="email-outline" />}
+              style={styles.input}
+            />
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Contraseña"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity 
-                style={styles.passwordToggle}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#666" 
-                />
-              </TouchableOpacity>
-            </View>
+            <PaperTextInput
+              label="Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="lock-outline" />}
+              right={<PaperTextInput.Icon icon={showPassword ? "eye-off-outline" : "eye-outline"} onPress={() => setShowPassword(!showPassword)} />}
+              style={styles.input}
+            />
 
-            <TouchableOpacity 
-              style={styles.forgotPassword}
+            <Button
+              mode="text"
               onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotPasswordButton}
             >
-              <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
+              ¿Olvidaste tu contraseña?
+            </Button>
 
-            <TouchableOpacity 
-              style={styles.loginButton}
+            <Button
+              mode="contained"
               onPress={handleLogin}
+              loading={isLoading}
               disabled={isLoading}
+              style={styles.loginButton}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Iniciar sesión</Text>
-              )}
-            </TouchableOpacity>
+              Iniciar sesión
+            </Button>
 
             <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>¿No tienes una cuenta? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerLink}>Regístrate</Text>
-              </TouchableOpacity>
+              <PaperText style={styles.registerText}>¿No tienes una cuenta? </PaperText>
+              <Button mode="text" onPress={() => navigation.navigate('Register')} style={styles.registerButton}>
+                Regístrate
+              </Button>
             </View>
           </View>
         </ScrollView>
@@ -151,7 +134,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f8f8f8', // Keep or use theme.colors.background
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -160,27 +143,26 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    justifyContent: 'center', // Center content vertically
   },
   header: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 40,
+    marginBottom: 30, // Adjusted margin
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+    // Handled by PaperText variant="headlineMedium"
+    marginTop: 15, // Adjusted margin
     textAlign: 'center',
   },
+  subtitle: {
+    // Handled by PaperText variant="titleMedium"
+    marginTop: 5,
+    textAlign: 'center',
+    marginBottom: 20, // Adjusted margin
+  },
   formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: '#fff', // Or theme.colors.surface
+    borderRadius: 10, // Or theme.roundness
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -189,63 +171,40 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   errorText: {
-    color: '#ff3b30',
+    // Color from theme.colors.error
     marginBottom: 15,
     textAlign: 'center',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    marginBottom: 20,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
   input: {
-    flex: 1,
-    height: 45,
-    fontSize: 16,
-    color: '#333',
+    marginBottom: 15, // Adjusted margin
+    // Height, fontSize, color are handled by PaperTextInput
   },
-  passwordToggle: {
-    padding: 5,
-  },
-  forgotPassword: {
+  forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    color: '#007AFF',
-    fontSize: 14,
+    marginBottom: 15, // Adjusted margin
   },
   loginButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    // backgroundColor is handled by mode="contained"
+    // borderRadius is handled by Paper.Button
     height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center', // Text is centered by default in Paper.Button
+    marginTop: 10, // Add some margin
   },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // loginButtonText is handled by Paper.Button
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center', // Align items for better look with Button
     marginTop: 20,
   },
   registerText: {
-    color: '#666',
+    // color: '#666', // Or theme.colors.onSurfaceVariant
     fontSize: 14,
+    marginRight: -8, // Adjust spacing with button
   },
-  registerLink: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  registerButton: {
+    // No specific styles needed if using mode="text" defaults
+  }
 });
 
 export default LoginScreen;

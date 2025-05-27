@@ -1,14 +1,13 @@
 import React, { useEffect } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   BackHandler,
-  Alert,
-  TouchableOpacity,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Button, Text as PaperText, Avatar, MD3DarkTheme } from "react-native-paper";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 
@@ -60,38 +59,53 @@ const LockScreen: React.FC<LockScreenProps> = ({ route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: MD3DarkTheme.colors.background }]}>
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="lock-closed" size={80} color="#FF3B30" />
-        </View>
+        <Avatar.Icon 
+          icon={({ size, color }) => <Ionicons name="lock-closed" size={size} color={color} />} 
+          size={80} 
+          color={MD3DarkTheme.colors.surface}
+          style={[styles.iconContainer, { backgroundColor: MD3DarkTheme.colors.error }]} 
+        />
 
-        <Text style={styles.title}>Dispositivo bloqueado</Text>
+        <PaperText variant="headlineMedium" style={[styles.title, { color: MD3DarkTheme.colors.onSurface }]}>
+          Dispositivo bloqueado
+        </PaperText>
 
-        <Text style={styles.message}>{getLockReasonText()}</Text>
+        <PaperText variant="bodyLarge" style={[styles.message, { color: MD3DarkTheme.colors.onSurface }]}>
+          {getLockReasonText()}
+        </PaperText>
 
-        <Text style={styles.instructions}>
+        <PaperText variant="bodyMedium" style={[styles.instructions, { color: MD3DarkTheme.colors.onSurfaceVariant }]}>
           Para desbloquear el dispositivo, necesitarás introducir tu clave de
           seguridad de 20 dígitos que recibiste por correo electrónico al
           registrarte.
-        </Text>
+        </PaperText>
 
-        <TouchableOpacity style={styles.unlockButton} onPress={handleUnlock}>
-          <Text style={styles.unlockButtonText}>Desbloquear dispositivo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.emergencyButton}
-          onPress={handleEmergencyCall}
+        <Button 
+          mode="contained" 
+          onPress={handleUnlock} 
+          style={styles.unlockButton}
+          buttonColor={MD3DarkTheme.colors.error}
+          textColor={MD3DarkTheme.colors.onError}
         >
-          <Text style={styles.emergencyButtonText}>Llamada de emergencia</Text>
-        </TouchableOpacity>
+          Desbloquear dispositivo
+        </Button>
+
+        <Button 
+          mode="outlined" 
+          onPress={handleEmergencyCall} 
+          style={styles.emergencyButton}
+          textColor={MD3DarkTheme.colors.onSurfaceVariant}
+        >
+          Llamada de emergencia
+        </Button>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
+        <PaperText variant="bodySmall" style={[styles.footerText, { color: MD3DarkTheme.colors.onSurfaceVariant }]}>
           SecureWipe - Protocolo de seguridad activo
-        </Text>
+        </PaperText>
       </View>
     </SafeAreaView>
   );
@@ -100,7 +114,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    // backgroundColor is set directly using MD3DarkTheme.colors.background
   },
   content: {
     flex: 1,
@@ -110,61 +124,49 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 30,
+    // backgroundColor for Avatar.Icon is set directly
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
+    // fontSize and fontWeight from PaperText variant="headlineMedium"
+    // color from MD3DarkTheme.colors.onSurface
     marginBottom: 20,
     textAlign: "center",
   },
   message: {
-    fontSize: 18,
-    color: "#fff",
+    // fontSize from PaperText variant="bodyLarge"
+    // color from MD3DarkTheme.colors.onSurface
     marginBottom: 30,
     textAlign: "center",
   },
   instructions: {
-    fontSize: 16,
-    color: "#ccc",
+    // fontSize from PaperText variant="bodyMedium"
+    // color from MD3DarkTheme.colors.onSurfaceVariant
     marginBottom: 40,
     textAlign: "center",
     lineHeight: 24,
   },
   unlockButton: {
-    backgroundColor: "#FF3B30",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
+    // backgroundColor from Button's buttonColor prop
+    // paddingVertical, paddingHorizontal, borderRadius handled by Paper.Button
     marginBottom: 20,
     width: "100%",
-    alignItems: "center",
+    // alignItems: "center", // Handled by Paper.Button
   },
-  unlockButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  // unlockButtonText color from Button's textColor prop, fontSize, fontWeight from Paper.Button labelStyle
   emergencyButton: {
-    borderWidth: 1,
-    borderColor: "#666",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
+    // borderWidth, borderColor from Paper.Button mode="outlined" and theme
+    // paddingVertical, paddingHorizontal, borderRadius handled by Paper.Button
     width: "100%",
-    alignItems: "center",
+    // alignItems: "center", // Handled by Paper.Button
   },
-  emergencyButtonText: {
-    color: "#ccc",
-    fontSize: 16,
-  },
+  // emergencyButtonText color from Button's textColor prop, fontSize from Paper.Button labelStyle
   footer: {
     padding: 20,
     alignItems: "center",
   },
   footerText: {
-    color: "#666",
-    fontSize: 14,
+    // color from MD3DarkTheme.colors.onSurfaceVariant
+    // fontSize from PaperText variant="bodySmall"
   },
 });
 

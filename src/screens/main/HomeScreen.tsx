@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+  StyleSheet,
+  ScrollView,
   RefreshControl,
-  Alert
+  Alert,
+  View // Keep View for simple layout containers if needed
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons'; // Keep Ionicons
+import {
+  Button,
+  Card,
+  Text as PaperText,
+  Avatar,
+  List,
+  useTheme,
+  MD3Colors // For specific MD3 colors if needed
+} from 'react-native-paper';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '../../config/firebase';
 import { getCurrentUser } from '../../services/authService';
@@ -20,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const SECURITY_KEY = 'security_key';
 
 const HomeScreen: React.FC = () => {
+  const theme = useTheme();
   const [userName, setUserName] = useState('');
   const [securityKey, setSecurityKey] = useState('');
   const [securityEnabled, setSecurityEnabled] = useState(false);
@@ -112,96 +120,98 @@ const HomeScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[theme.colors.primary]} // Android
+            tintColor={theme.colors.primary} // iOS
+          />
         }
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hola, {userName}</Text>
-          <Text style={styles.subtitle}>
+          <PaperText variant="headlineSmall" style={styles.greeting}>Hola, {userName}</PaperText>
+          <PaperText variant="titleMedium" style={styles.subtitle}>
             {securityEnabled 
               ? 'Tu dispositivo está protegido' 
               : 'Tu dispositivo no está protegido'}
-          </Text>
+          </PaperText>
         </View>
 
-        <View style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <Ionicons 
-              name={securityEnabled ? "shield-checkmark" : "shield-outline"} 
-              size={24} 
-              color={securityEnabled ? "#4CAF50" : "#FF9800"} 
-            />
-            <Text style={[
-              styles.statusTitle, 
-              {color: securityEnabled ? "#4CAF50" : "#FF9800"}
-            ]}>
-              {securityEnabled ? "Protección activa" : "Protección inactiva"}
-            </Text>
-          </View>
-          
-          <Text style={styles.statusDescription}>
-            {securityEnabled 
-              ? "Tu dispositivo está siendo monitoreado para detectar actividades sospechosas." 
-              : "Activa la protección en la sección de Seguridad para proteger tu dispositivo."}
-          </Text>
-          
-          {securityEnabled && (
-            <Text style={styles.lastCheck}>
-              Última verificación: {new Date(lastCheck).toLocaleString()}
-            </Text>
-          )}
-        </View>
+        <Card style={styles.statusCard}>
+          <Card.Title
+            title={securityEnabled ? "Protección activa" : "Protección inactiva"}
+            titleStyle={{ color: securityEnabled ? theme.colors.primary : MD3Colors.orangeA700 }}
+            left={(props) => (
+              <Avatar.Icon 
+                {...props} 
+                icon={securityEnabled ? "shield-check" : "shield-alert-outline"} 
+                style={{ backgroundColor: securityEnabled ? theme.colors.primaryContainer : MD3Colors.orangeA100 }}
+                color={securityEnabled ? theme.colors.onPrimaryContainer : MD3Colors.orangeA700}
+              />
+            )}
+          />
+          <Card.Content>
+            <PaperText variant="bodyMedium" style={styles.statusDescription}>
+              {securityEnabled 
+                ? "Tu dispositivo está siendo monitoreado para detectar actividades sospechosas." 
+                : "Activa la protección en la sección de Seguridad para proteger tu dispositivo."}
+            </PaperText>
+            {securityEnabled && (
+              <PaperText variant="bodySmall" style={styles.lastCheck}>
+                Última verificación: {new Date(lastCheck).toLocaleString()}
+              </PaperText>
+            )}
+          </Card.Content>
+        </Card>
 
         <View style={styles.actionsContainer}>
-          <Text style={styles.sectionTitle}>Acciones rápidas</Text>
+          <PaperText variant="titleMedium" style={styles.sectionTitle}>Acciones rápidas</PaperText>
           
-          <TouchableOpacity 
-            style={styles.actionButton}
+          <List.Item
+            title="Ver clave de seguridad"
+            description="Muestra tu clave de 20 dígitos para desbloquear el dispositivo"
+            titleStyle={styles.actionTitleStyle}
+            descriptionStyle={styles.actionDescriptionStyle}
+            left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="key-outline" size={size} color={theme.colors.primary} />} />}
             onPress={handleShowSecurityKey}
-          >
-            <Ionicons name="key-outline" size={24} color="#007AFF" />
-            <View style={styles.actionTextContainer}>
-              <Text style={styles.actionTitle}>Ver clave de seguridad</Text>
-              <Text style={styles.actionDescription}>
-                Muestra tu clave de 20 dígitos para desbloquear el dispositivo
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            style={styles.listItem}
+          />
           
-          <TouchableOpacity 
-            style={styles.actionButton}
+          <List.Item
+            title="Probar bloqueo"
+            description="Simula el bloqueo del dispositivo para probar la funcionalidad"
+            titleStyle={styles.actionTitleStyle}
+            descriptionStyle={styles.actionDescriptionStyle}
+            left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="lock-closed-outline" size={size} color={theme.colors.primary} />} />}
             onPress={handleTestLock}
-          >
-            <Ionicons name="lock-closed-outline" size={24} color="#007AFF" />
-            <View style={styles.actionTextContainer}>
-              <Text style={styles.actionTitle}>Probar bloqueo</Text>
-              <Text style={styles.actionDescription}>
-                Simula el bloqueo del dispositivo para probar la funcionalidad
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            style={styles.listItem}
+          />
         </View>
 
         <View style={styles.infoContainer}>
-          <Text style={styles.sectionTitle}>Información importante</Text>
+          <PaperText variant="titleMedium" style={styles.sectionTitle}>Información importante</PaperText>
           
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
-            <Text style={styles.infoText}>
-              En caso de pérdida o robo, podrás bloquear tu dispositivo desde la interfaz web 
-              o configurar comportamientos que activen el bloqueo automáticamente.
-            </Text>
-          </View>
+          <Card style={styles.infoCard}>
+            <Card.Content style={styles.infoCardContent}>
+              <Ionicons name="information-circle-outline" size={24} color={theme.colors.primary} style={styles.infoIcon} />
+              <PaperText variant="bodyMedium" style={styles.infoText}>
+                En caso de pérdida o robo, podrás bloquear tu dispositivo desde la interfaz web 
+                o configurar comportamientos que activen el bloqueo automáticamente.
+              </PaperText>
+            </Card.Content>
+          </Card>
           
-          <View style={styles.infoCard}>
-            <Ionicons name="warning-outline" size={24} color="#FF9800" />
-            <Text style={styles.infoText}>
-              Guarda tu clave de seguridad en un lugar seguro. La necesitarás para desbloquear 
-              tu dispositivo en caso de activación del protocolo de seguridad.
-            </Text>
-          </View>
+          <Card style={styles.infoCard}>
+            <Card.Content style={styles.infoCardContent}>
+              <Ionicons name="warning-outline" size={24} color={MD3Colors.orangeA700} style={styles.infoIcon} />
+              <PaperText variant="bodyMedium" style={styles.infoText}>
+                Guarda tu clave de seguridad en un lugar seguro. La necesitarás para desbloquear 
+                tu dispositivo en caso de activación del protocolo de seguridad.
+              </PaperText>
+            </Card.Content>
+          </Card>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -211,112 +221,84 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    // backgroundColor is handled by theme
   },
   scrollView: {
-    padding: 20,
+    padding: 16, // Adjusted padding
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24, // Adjusted margin
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    // fontSize and fontWeight from PaperText variant="headlineSmall"
+    // color: theme.colors.onBackground, // Default for PaperText
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+    // fontSize from PaperText variant="titleMedium"
+    // color: theme.colors.onSurfaceVariant, // Default for PaperText
+    marginTop: 4, // Adjusted margin
   },
   statusCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    // backgroundColor: theme.colors.surface, // Default for Card
+    // borderRadius: theme.roundness, // Default for Card
+    // elevation: 1, // Default for Card, or adjust as needed
+    marginBottom: 24, // Adjusted margin
   },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
+  // statusHeader is handled by Card.Title
+  // statusTitle is handled by Card.Title titleStyle
   statusDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
+    // fontSize from PaperText variant="bodyMedium"
+    // color: theme.colors.onSurfaceVariant, // Default for PaperText
+    marginBottom: 8, // Adjusted margin
   },
   lastCheck: {
-    fontSize: 12,
-    color: '#999',
+    // fontSize from PaperText variant="bodySmall"
+    // color: theme.colors.onSurfaceVariant, // Default for PaperText
     fontStyle: 'italic',
   },
   actionsContainer: {
-    marginBottom: 20,
+    marginBottom: 24, // Adjusted margin
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    // fontSize and fontWeight from PaperText variant="titleMedium"
+    // color: theme.colors.onSurfaceVariant, // Default for PaperText
+    marginBottom: 8, // Adjusted margin
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  listItem: {
+    backgroundColor: theme.colors.surface, // Paper List.Item default might be transparent
+    borderRadius: theme.roundness,
+    marginBottom: 8,
+    // elevation: 1, // If a slight elevation is desired for List.Items
   },
-  actionTextContainer: {
-    flex: 1,
-    marginLeft: 15,
+  actionTitleStyle: {
+    fontWeight: '600', // As per original style
+    // color: theme.colors.onSurface // Default for List.Item title
   },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  actionDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 3,
+  actionDescriptionStyle: {
+    // color: theme.colors.onSurfaceVariant // Default for List.Item description
   },
   infoContainer: {
-    marginBottom: 20,
+    marginBottom: 16, // Adjusted margin
   },
   infoCard: {
+    // backgroundColor: theme.colors.surface, // Default for Card
+    // borderRadius: theme.roundness, // Default for Card
+    // elevation: 1, // Default for Card
+    marginBottom: 12, // Adjusted margin
+  },
+  infoCardContent: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    alignItems: 'flex-start', // Align icon with the start of the text
+  },
+  infoIcon: {
+    marginRight: 12, // Space between icon and text
+    marginTop: 2, // Align icon slightly better with text lines
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 15,
-    lineHeight: 20,
+    // fontSize from PaperText variant="bodyMedium"
+    // color: theme.colors.onSurfaceVariant, // Default for PaperText
+    lineHeight: 20, // As per original style
   },
 });
 

@@ -1,22 +1,30 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
-  Switch,
   Linking,
+  View // Keep View for simple layout containers if needed
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons"; // Keep Ionicons
+import {
+  Card,
+  List,
+  Avatar,
+  Switch as PaperSwitch,
+  Button,
+  Text as PaperText,
+  useTheme,
+  Divider,
+  ActivityIndicator as PaperActivityIndicator
+} from "react-native-paper";
 import { getCurrentUser, logoutUser } from "../../services/authService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Application from "expo-application";
 
 const SettingsScreen: React.FC = () => {
+  const theme = useTheme();
   const [userEmail, setUserEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -144,149 +152,125 @@ const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>
+          <PaperText variant="headlineMedium" style={styles.title}>Ajustes</PaperText>
+          <PaperText variant="bodyLarge" style={styles.subtitle}>
             Gestiona tu cuenta y configuración
-          </Text>
+          </PaperText>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Cuenta</Text>
-
-          <View style={styles.profileInfo}>
-            <View style={styles.profileAvatar}>
-              <Ionicons name="person" size={30} color="#fff" />
-            </View>
-            <View style={styles.profileDetails}>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
-              <Text style={styles.profileStatus}>Cuenta activa</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={handleOpenWebPanel}
-          >
-            <Ionicons name="globe-outline" size={24} color="#007AFF" />
-            <Text style={styles.settingButtonText}>
-              Panel web administrativo
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={handleLogout}
-            disabled={isLoading}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-            {isLoading ? (
-              <ActivityIndicator color="#FF3B30" style={{ marginLeft: 10 }} />
-            ) : (
-              <Text style={[styles.settingButtonText, { color: "#FF3B30" }]}>
-                Cerrar sesión
-              </Text>
-            )}
-            <View style={{ width: 20 }} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Notificaciones</Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Notificaciones push</Text>
-              <Text style={styles.settingDescription}>
-                Recibir alertas sobre actividades sospechosas
-              </Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
-              trackColor={{ false: "#D1D1D6", true: "#4CAF50" }}
-              thumbColor="#FFFFFF"
+        <Card style={styles.card}>
+          <Card.Title title="Cuenta" titleVariant="titleLarge" />
+          <Card.Content>
+            <List.Item
+              title={userEmail}
+              description="Cuenta activa"
+              titleStyle={styles.profileEmail}
+              descriptionStyle={styles.profileStatus}
+              left={props => <Avatar.Icon {...props} icon="person" style={{ backgroundColor: theme.colors.primary }} />}
             />
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Seguridad</Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Autenticación biométrica</Text>
-              <Text style={styles.settingDescription}>
-                Usar huella digital o reconocimiento facial para autenticación
-              </Text>
-            </View>
-            <Switch
-              value={biometricEnabled}
-              onValueChange={handleToggleBiometric}
-              trackColor={{ false: "#D1D1D6", true: "#4CAF50" }}
-              thumbColor="#FFFFFF"
+            <Divider />
+            <List.Item
+              title="Panel web administrativo"
+              left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="globe-outline" size={size} color={theme.colors.primary} />} />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleOpenWebPanel}
             />
-          </View>
-        </View>
+            <Divider />
+            <List.Item
+              title="Cerrar sesión"
+              titleStyle={{ color: theme.colors.error }}
+              left={props => <List.Icon {...props} icon={({ size }) => <Ionicons name="log-out-outline" size={size} color={theme.colors.error} />} />}
+              onPress={handleLogout}
+              disabled={isLoading}
+              right={() => isLoading ? <PaperActivityIndicator animating={true} color={theme.colors.error} style={styles.logoutLoader} /> : <View style={{ width: 20 }} />}
+            />
+          </Card.Content>
+        </Card>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Soporte</Text>
+        <Card style={styles.card}>
+          <Card.Title title="Notificaciones" titleVariant="titleLarge" />
+          <Card.Content>
+            <List.Item
+              title="Notificaciones push"
+              description="Recibir alertas sobre actividades sospechosas"
+              right={() => (
+                <PaperSwitch
+                  value={notificationsEnabled}
+                  onValueChange={handleToggleNotifications}
+                />
+              )}
+            />
+          </Card.Content>
+        </Card>
 
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={handleContactSupport}
-          >
-            <Ionicons name="mail-outline" size={24} color="#007AFF" />
-            <Text style={styles.settingButtonText}>Contactar soporte</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
+        <Card style={styles.card}>
+          <Card.Title title="Seguridad" titleVariant="titleLarge" />
+          <Card.Content>
+            <List.Item
+              title="Autenticación biométrica"
+              description="Usar huella digital o reconocimiento facial para autenticación"
+              right={() => (
+                <PaperSwitch
+                  value={biometricEnabled}
+                  onValueChange={handleToggleBiometric}
+                />
+              )}
+            />
+          </Card.Content>
+        </Card>
 
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={handleOpenPrivacyPolicy}
-          >
-            <Ionicons name="shield-outline" size={24} color="#007AFF" />
-            <Text style={styles.settingButtonText}>Política de privacidad</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
+        <Card style={styles.card}>
+          <Card.Title title="Soporte" titleVariant="titleLarge" />
+          <Card.Content>
+            <List.Item
+              title="Contactar soporte"
+              left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="mail-outline" size={size} color={theme.colors.primary} />} />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleContactSupport}
+            />
+            <Divider />
+            <List.Item
+              title="Política de privacidad"
+              left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="shield-outline" size={size} color={theme.colors.primary} />} />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleOpenPrivacyPolicy}
+            />
+            <Divider />
+            <List.Item
+              title="Términos de servicio"
+              left={props => <List.Icon {...props} icon={({ size, color }) => <Ionicons name="document-text-outline" size={size} color={theme.colors.primary} />} />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleOpenTerms}
+            />
+          </Card.Content>
+        </Card>
 
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={handleOpenTerms}
-          >
-            <Ionicons name="document-text-outline" size={24} color="#007AFF" />
-            <Text style={styles.settingButtonText}>Términos de servicio</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
+        <Card style={styles.card}>
+          <Card.Title title="Información de la aplicación" titleVariant="titleLarge" />
+          <Card.Content>
+            <List.Item
+              title="Versión"
+              right={() => <PaperText variant="bodyMedium">{Application.nativeApplicationVersion || "1.0.0"}</PaperText>}
+            />
+            <Divider />
+            <List.Item
+              title="Build"
+              right={() => <PaperText variant="bodyMedium">{Application.nativeBuildVersion || "1"}</PaperText>}
+            />
+          </Card.Content>
+        </Card>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Información de la aplicación</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Versión</Text>
-            <Text style={styles.infoValue}>
-              {Application.nativeApplicationVersion || "1.0.0"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Build</Text>
-            <Text style={styles.infoValue}>
-              {Application.nativeBuildVersion || "1"}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.deleteAccountButton}
+        <Button
+          mode="text"
           onPress={handleDeleteAccount}
+          textColor={theme.colors.error}
+          style={styles.deleteAccountButton}
         >
-          <Text style={styles.deleteAccountText}>Eliminar cuenta</Text>
-        </TouchableOpacity>
+          Eliminar cuenta
+        </Button>
       </ScrollView>
     </SafeAreaView>
   );
@@ -295,125 +279,51 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    // backgroundColor handled by theme
   },
   scrollView: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 16, // Adjusted padding
+    paddingBottom: 32, // Adjusted padding
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24, // Adjusted margin
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
+    // Handled by PaperText variant="headlineMedium"
+    // color: theme.colors.onBackground // Default
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 5,
+    // Handled by PaperText variant="bodyLarge"
+    // color: theme.colors.onSurfaceVariant // Default
+    marginTop: 4, // Adjusted margin
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    // backgroundColor: theme.colors.surface, // Default for Card
+    // borderRadius: theme.roundness, // Default for Card
+    // elevation: 1, // Default for Card, or adjust as needed
+    marginBottom: 16, // Adjusted margin
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  profileInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  profileAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#007AFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileDetails: {
-    marginLeft: 15,
-  },
+  // cardTitle is handled by Card.Title titleVariant prop
   profileEmail: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
+    // fontSize: 16, // Handled by List.Item titleStyle or PaperText variant
+    fontWeight: "600", // Keep if desired
+    // color: theme.colors.onSurface // Default
   },
   profileStatus: {
-    fontSize: 14,
-    color: "#4CAF50",
-    marginTop: 2,
+    // fontSize: 14, // Handled by List.Item descriptionStyle or PaperText variant
+    // color: theme.colors.primary // Example if you want to use primary color
   },
-  settingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+  logoutLoader: {
+    marginRight: 8, // Adjust as needed
   },
-  settingButtonText: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 15,
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: "#333",
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#666",
-  },
+  // settingButton, settingButtonText, settingRow, settingInfo, settingTitle, settingDescription are replaced by List.Item props and styles
+  // infoRow, infoLabel, infoValue are replaced by List.Item
   deleteAccountButton: {
-    alignItems: "center",
-    padding: 15,
-    marginTop: 10,
+    // alignItems and padding handled by Paper.Button
+    marginTop: 16, // Adjusted margin
   },
-  deleteAccountText: {
-    fontSize: 16,
-    color: "#FF3B30",
-  },
+  // deleteAccountText is handled by Paper.Button textColor prop
 });
 
 export default SettingsScreen;

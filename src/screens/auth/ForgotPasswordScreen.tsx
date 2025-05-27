@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ActivityIndicator, 
+  View,
+  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform
@@ -14,12 +10,14 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { resetPassword } from '../../services/authService';
+import { Button, TextInput as PaperTextInput, ActivityIndicator as PaperActivityIndicator, Text as PaperText, IconButton, useTheme } from 'react-native-paper';
 
 type ForgotPasswordScreenProps = {
   navigation: StackNavigationProp<any>;
 };
 
 const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation }) => {
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,54 +77,54 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
+        <View style={styles.contentContainer}>
+          <IconButton
+            icon="arrow-left"
+            iconColor={theme.colors.primary}
+            size={24}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          />
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Recuperar contraseña</Text>
-          <Text style={styles.subtitle}>
-            Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña
-          </Text>
-        </View>
+          <View style={styles.header}>
+            <PaperText variant="headlineMedium" style={styles.title}>Recuperar contraseña</PaperText>
+            <PaperText variant="bodyLarge" style={styles.subtitle}>
+              Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña
+            </PaperText>
+          </View>
 
-        <View style={styles.formContainer}>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={styles.formContainer}>
+            {error ? <PaperText style={[styles.errorText, { color: theme.colors.error }]}>{error}</PaperText> : null}
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electrónico"
+            <PaperTextInput
+              label="Correo electrónico"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="email-outline" />}
+              style={styles.input}
             />
+
+            <Button
+              mode="contained"
+              onPress={handleResetPassword}
+              loading={isLoading}
+              disabled={isLoading}
+              style={styles.resetButton}
+            >
+              Enviar correo
+            </Button>
+
+            <Button
+              mode="text"
+              onPress={() => navigation.navigate('Login')}
+              style={styles.cancelButton}
+            >
+              Volver al inicio de sesión
+            </Button>
           </View>
-
-          <TouchableOpacity 
-            style={styles.resetButton}
-            onPress={handleResetPassword}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.resetButtonText}>Enviar correo</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.cancelButton}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.cancelButtonText}>Volver al inicio de sesión</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -136,35 +134,39 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
-    paddingHorizontal: 20,
+    backgroundColor: '#f8f8f8', // Or theme.colors.background
   },
   keyboardAvoidingView: {
     flex: 1,
+    justifyContent: 'center', // Center the content vertically
+  },
+  contentContainer: { // Added a wrapper for content
+    paddingHorizontal: 20,
   },
   backButton: {
-    marginTop: 10,
-    padding: 5,
-    width: 40,
+    // marginTop: 10, // Adjusted by contentContainer
+    // Removed padding and width, IconButton has its own sizing
+    alignSelf: 'flex-start',
+    marginLeft: -8, // Counteract IconButton's internal padding
   },
   header: {
-    marginTop: 30,
-    marginBottom: 40,
+    marginTop: 10, // Reduced margin as IconButton takes space
+    marginBottom: 30, // Adjusted margin
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    // Handled by PaperText variant="headlineMedium"
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    // Handled by PaperText variant="bodyLarge"
     marginTop: 10,
     lineHeight: 22,
+    textAlign: 'center',
   },
   formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: '#fff', // Or theme.colors.surface
+    borderRadius: 10, // Or theme.roundness
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -173,48 +175,28 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   errorText: {
-    color: '#ff3b30',
+    // Color from theme.colors.error
     marginBottom: 15,
     textAlign: 'center',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    marginBottom: 30,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
   input: {
-    flex: 1,
-    height: 45,
-    fontSize: 16,
-    color: '#333',
+    // Height, fontSize, color are handled by PaperTextInput
+    marginBottom: 20, // Adjusted margin
   },
   resetButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    // backgroundColor is handled by mode="contained"
+    // borderRadius is handled by Paper.Button
     height: 50,
-    alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 15,
   },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // resetButtonText is handled by Paper.Button
   cancelButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
+    // alignItems and justifyContent handled by Paper.Button
+    // padding handled by Paper.Button
+    marginTop: 5, // Add some space from the main button
   },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-  },
+  // cancelButtonText is handled by Paper.Button
 });
 
 export default ForgotPasswordScreen;

@@ -4,6 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "react-native-paper";
 
 // Pantallas de autenticación
 import LoginScreen from "../screens/auth/LoginScreen";
@@ -68,6 +69,8 @@ const AuthNavigator = () => {
 
 // Navegador principal con tabs
 const MainNavigator = () => {
+  const theme = useTheme(); // Access theme
+
   return (
     <MainTab.Navigator
       screenOptions={({ route }) => ({
@@ -86,8 +89,8 @@ const MainNavigator = () => {
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: theme.colors.primary, // Use theme color
+        tabBarInactiveTintColor: theme.colors.onSurfaceVariant, // Use theme color
         headerShown: true,
       })}
     >

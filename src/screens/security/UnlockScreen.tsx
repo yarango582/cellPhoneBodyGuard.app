@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from "react";
 import {
   View,
-  Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   Alert,
-  ActivityIndicator,
   BackHandler,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Button, TextInput as PaperTextInput, ActivityIndicator as PaperActivityIndicator, Text as PaperText, Avatar, MD3DarkTheme } from "react-native-paper";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { unblockDevice } from "../../services/securityService";
 import { formatSecurityKey, cleanSecurityKey } from "../../utils/securityUtils";
@@ -123,64 +120,76 @@ const UnlockScreen: React.FC = () => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: MD3DarkTheme.colors.background }]}>
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="key" size={80} color="#007AFF" />
-          </View>
+          <Avatar.Icon 
+            icon={({ size, color }) => <Ionicons name="key" size={size} color={color} />} 
+            size={80} 
+            color={MD3DarkTheme.colors.onPrimary}
+            style={[styles.iconContainer, { backgroundColor: MD3DarkTheme.colors.primary }]} 
+          />
 
-          <Text style={styles.title}>Desbloquear dispositivo</Text>
+          <PaperText variant="headlineMedium" style={[styles.title, { color: MD3DarkTheme.colors.onSurface }]}>
+            Desbloquear dispositivo
+          </PaperText>
 
-          <Text style={styles.instructions}>
+          <PaperText variant="bodyMedium" style={[styles.instructions, { color: MD3DarkTheme.colors.onSurfaceVariant }]}>
             Introduce tu clave de seguridad de 20 dígitos para desbloquear el
             dispositivo. Esta clave fue enviada a tu correo electrónico cuando
             te registraste.
-          </Text>
+          </PaperText>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? (
+            <PaperText variant="bodyMedium" style={[styles.errorText, { color: MD3DarkTheme.colors.error }]}>
+              {error}
+            </PaperText>
+          ) : null}
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={formattedKey}
-              onChangeText={handleKeyChange}
-              placeholder="0000 0000 0000 0000 0000"
-              placeholderTextColor="#666"
-              keyboardType="number-pad"
-              maxLength={24} // 20 dígitos + 4 espacios
-              autoFocus={true}
-            />
-          </View>
+          <PaperTextInput
+            mode="outlined"
+            style={styles.input}
+            value={formattedKey}
+            onChangeText={handleKeyChange}
+            placeholder="0000 0000 0000 0000 0000"
+            placeholderTextColor={MD3DarkTheme.colors.onSurfaceVariant}
+            keyboardType="number-pad"
+            maxLength={24} // 20 dígitos + 4 espacios
+            autoFocus={true}
+            textColor={MD3DarkTheme.colors.onSurface}
+            theme={{ colors: { background: MD3DarkTheme.colors.surfaceVariant } }} // For input background
+          />
 
-          <TouchableOpacity
-            style={[styles.unlockButton, isLoading && styles.disabledButton]}
+          <Button
+            mode="contained"
             onPress={handleUnlock}
+            loading={isLoading}
             disabled={isLoading}
+            style={styles.unlockButton}
+            buttonColor={MD3DarkTheme.colors.primary}
+            textColor={MD3DarkTheme.colors.onPrimary}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.unlockButtonText}>Desbloquear</Text>
-            )}
-          </TouchableOpacity>
+            Desbloquear
+          </Button>
 
-          <TouchableOpacity
-            style={styles.forgotButton}
+          <Button
+            mode="text"
             onPress={handleForgotKey}
+            style={styles.forgotButton}
+            textColor={MD3DarkTheme.colors.primary}
           >
-            <Text style={styles.forgotButtonText}>
-              ¿Olvidaste tu clave de seguridad?
-            </Text>
-          </TouchableOpacity>
+            ¿Olvidaste tu clave de seguridad?
+          </Button>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <PaperText variant="bodySmall" style={[styles.footerText, { color: MD3DarkTheme.colors.onSurfaceVariant }]}>
             SecureWipe - Protocolo de seguridad activo
-          </Text>
-          <Text style={styles.attemptsText}>
-            {attempts > 0 ? `Intentos fallidos: ${attempts}/5` : ""}
-          </Text>
+          </PaperText>
+          {attempts > 0 && (
+            <PaperText variant="bodySmall" style={[styles.attemptsText, { color: MD3DarkTheme.colors.error }]}>
+              {`Intentos fallidos: ${attempts}/5`}
+            </PaperText>
+          )}
         </View>
       </SafeAreaView>
     </TouchableWithoutFeedback>
@@ -190,7 +199,7 @@ const UnlockScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    // backgroundColor is set directly using MD3DarkTheme.colors.background
   },
   content: {
     flex: 1,
@@ -200,75 +209,61 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 30,
+    // backgroundColor for Avatar.Icon is set directly
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
+    // fontSize and fontWeight from PaperText variant="headlineMedium"
+    // color from MD3DarkTheme.colors.onSurface
     marginBottom: 20,
     textAlign: "center",
   },
   instructions: {
-    fontSize: 16,
-    color: "#ccc",
+    // fontSize from PaperText variant="bodyMedium"
+    // color from MD3DarkTheme.colors.onSurfaceVariant
     marginBottom: 30,
     textAlign: "center",
     lineHeight: 24,
   },
   errorText: {
-    color: "#FF3B30",
-    fontSize: 16,
+    // fontSize from PaperText variant="bodyMedium"
+    // color from MD3DarkTheme.colors.error
     marginBottom: 20,
     textAlign: "center",
-  },
-  inputContainer: {
-    width: "100%",
-    marginBottom: 30,
   },
   input: {
-    backgroundColor: "#1c1c1e",
-    color: "#fff",
-    fontSize: 20,
-    padding: 15,
-    borderRadius: 10,
-    textAlign: "center",
-    letterSpacing: 2,
+    // backgroundColor is handled by PaperTextInput theme prop or direct style
+    // color is handled by PaperTextInput textColor prop
+    // fontSize is handled by PaperTextInput
+    // padding, borderRadius are handled by PaperTextInput
+    textAlign: "center", // Keep this for the input text itself
+    letterSpacing: 2,   // Keep this
+    width: "100%",      // Ensure it takes full width
+    marginBottom: 30,   // Keep this
   },
   unlockButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
+    // backgroundColor from Button's buttonColor prop
+    // paddingVertical, paddingHorizontal, borderRadius handled by Paper.Button
     marginBottom: 20,
     width: "100%",
-    alignItems: "center",
+    // alignItems: "center", // Handled by Paper.Button
   },
-  disabledButton: {
-    backgroundColor: "#0a5dc2",
-  },
-  unlockButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  // disabledButton style handled by Paper.Button's disabled state
+  // unlockButtonText color from Button's textColor prop, fontSize, fontWeight from Paper.Button labelStyle
   forgotButton: {
-    padding: 10,
+    // padding handled by Paper.Button
   },
-  forgotButtonText: {
-    color: "#007AFF",
-    fontSize: 16,
-  },
+  // forgotButtonText color from Button's textColor prop, fontSize from Paper.Button labelStyle
   footer: {
     padding: 20,
     alignItems: "center",
   },
   footerText: {
-    color: "#666",
-    fontSize: 14,
+    // color from MD3DarkTheme.colors.onSurfaceVariant
+    // fontSize from PaperText variant="bodySmall"
   },
   attemptsText: {
-    color: "#FF3B30",
-    fontSize: 14,
+    // color from MD3DarkTheme.colors.error
+    // fontSize from PaperText variant="bodySmall"
     marginTop: 5,
   },
 });
