@@ -20,7 +20,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.securewipe.app",
+      "permissions": [],
+      "jsEngine": "hermes"
     },
     "web": {
       "favicon": "./assets/favicon.png"

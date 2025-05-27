@@ -31,7 +31,29 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+
+# Logs
+logs
+*.log
+
+# Build directories
+build/
+
+# Cache
+.cache/
+
+# Secrets and credentials
+*.keystore
+*.p12
+secrets.json
+credentials.json
