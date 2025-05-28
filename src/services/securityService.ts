@@ -7,8 +7,17 @@ import {
   collection,
   addDoc,
   serverTimestamp,
+  onSnapshot,
+  getDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp,
 } from "firebase/firestore";
-import { firestore } from "../config/firebase";
+import { firestore, storage, auth } from "../config/firebase";
+// Definimos el tipo para las instancias de Firestore para evitar errores de tipado
+import { Firestore } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCurrentUser } from "./authService";
 import {
@@ -16,9 +25,15 @@ import {
   sendDeviceBlockedEmail,
 } from "./emailService";
 import * as Device from "expo-device";
+import * as FileSystem from "expo-file-system";
+import * as Notifications from "expo-notifications";
+import NetInfo from "@react-native-community/netinfo";
+import { getDeviceInfo } from "../utils/securityUtils";
+import { Platform, AppState } from "react-native";
 
 // Nombre de la tarea en segundo plano
 const BACKGROUND_SECURITY_TASK = "background-security-check";
+const REMOTE_COMMAND_CHECK_TASK = "remote-command-check";
 
 // Claves para almacenamiento local
 const SECURITY_SETTINGS_KEY = "security_settings";
@@ -27,6 +42,43 @@ const DEVICE_BLOCKED_KEY = "device_blocked";
 const SECURITY_KEY = "security_key";
 const MONITORING_ACTIVE_KEY = "monitoring_active";
 const LAST_MONITORING_CHECK_KEY = "last_monitoring_check";
+const DEVICE_ID_KEY = "device_id";
+const APP_LOCK_ACTIVE_KEY = "app_lock_active";
+const DEVICE_REGISTERED_KEY = "device_registered";
+const LAST_SYNC_KEY = "last_sync";
+
+// Canales de notificación
+const SECURITY_NOTIFICATION_CHANNEL = "security-notifications";
+
+// Tipos de eventos de seguridad
+export enum SecurityEventType {
+  SUSPICIOUS_ACTIVITY = "suspicious_activity",
+  DEVICE_BLOCKED = "device_blocked",
+  DEVICE_UNBLOCKED = "device_unblocked",
+  REMOTE_COMMAND = "remote_command",
+  FAILED_UNLOCK = "failed_unlock",
+  ADMIN_ACCESS = "admin_access",
+  LOCATION_TRACKED = "location_tracked",
+  SYSTEM_ALERT = "system_alert",
+}
+
+// Tipos de comandos remotos
+export enum RemoteCommandType {
+  LOCK = "lock",
+  UNLOCK = "unlock",
+  WIPE = "wipe",
+  LOCATE = "locate",
+  SOUND_ALARM = "sound_alarm",
+  TAKE_PHOTO = "take_photo",
+}
+
+// Estados de comandos remotos
+export enum RemoteCommandStatus {
+  PENDING = "pending",
+  EXECUTING = "executing",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}
 
 // Interfaz para la configuración de seguridad
 export interface SecuritySettings {
@@ -34,15 +86,69 @@ export interface SecuritySettings {
   suspiciousAttemptsThreshold: number;
   autoBlockEnabled: boolean;
   remoteWipeEnabled: boolean;
+  locationTrackingEnabled: boolean;
+  biometricUnlockEnabled: boolean;
+  notificationsEnabled: boolean;
+  photoOnFailedUnlockEnabled: boolean;
   lastChecked: string;
+  syncFrequencyMinutes: number;
+  autoSyncOnConnection: boolean;
 }
 
 // Interfaz para eventos de seguridad
 export interface SecurityEvent {
-  type: string;
+  type: SecurityEventType;
   description: string;
   timestamp: number;
+  deviceId: string;
+  userId: string;
   details?: any;
+  severity: "high" | "medium" | "low";
+  resolved?: boolean;
+  resolvedAt?: number;
+}
+
+// Interfaz para comandos remotos
+export interface RemoteCommand {
+  id?: string;
+  type: RemoteCommandType;
+  deviceId: string;
+  userId: string;
+  status: RemoteCommandStatus;
+  createdAt: number;
+  executedAt?: number;
+  params?: any;
+  result?: any;
+}
+
+// Interfaz para el estado de seguridad del dispositivo
+export interface SecurityStatus {
+  isBlocked: boolean;
+  blockedAt?: number;
+  blockReason?: string;
+  suspiciousActivityCount: number;
+  failedUnlockAttempts: number;
+  monitoringActive: boolean;
+  lastLocationUpdate?: number;
+  location?: {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    timestamp: number;
+  };
+}
+
+// Interfaz para información del dispositivo
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  brand: string;
+  manufacturer?: string;
+  modelName: string;
+  osName: string;
+  osVersion: string;
+  registeredAt: number;
+  lastOnline: number;
 }
 
 // Valores predeterminados para la configuración de seguridad
@@ -51,7 +157,13 @@ const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   suspiciousAttemptsThreshold: 3,
   autoBlockEnabled: true,
   remoteWipeEnabled: false,
+  locationTrackingEnabled: false,
+  biometricUnlockEnabled: false,
+  notificationsEnabled: true,
+  photoOnFailedUnlockEnabled: false,
   lastChecked: new Date().toISOString(),
+  syncFrequencyMinutes: 15,
+  autoSyncOnConnection: true,
 };
 
 /**
@@ -78,7 +190,7 @@ export const registerBackgroundTask = async (): Promise<boolean> => {
 
           // Registrar evento de seguridad
           await logSecurityEvent({
-            type: "suspicious_activity",
+            type: SecurityEventType.SUSPICIOUS_ACTIVITY,
             description: "Actividad sospechosa detectada",
             timestamp: Date.now(),
           });
@@ -160,9 +272,9 @@ export const updateSecuritySettings = async (
     // Actualizar configuración en Firestore si el usuario está autenticado
     const user = getCurrentUser();
     if (user) {
-      await updateDoc(doc(firestore, "users", user.uid), {
-        securitySettings: settings,
-      });
+      // Usar directamente firestore
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, { securitySettings: settings });
     }
   } catch (error) {
     console.error("Error al actualizar configuración de seguridad:", error);
@@ -242,7 +354,7 @@ export const resetSuspiciousActivityCount = async (): Promise<void> => {
 
     // Registrar evento de seguridad
     await logSecurityEvent({
-      type: "counter_reset",
+      type: SecurityEventType.SYSTEM_ALERT,
       description: "Contador de actividades sospechosas reiniciado manualmente",
       timestamp: Date.now(),
     });
@@ -326,6 +438,7 @@ export const setMonitoringActive = async (active: boolean): Promise<void> => {
         },
       };
 
+      // Usar directamente firestore
       await addDoc(collection(firestore, "securityEvents"), securityEvent);
     }
   } catch (error) {
@@ -341,8 +454,6 @@ export const blockDevice = async (reason: string): Promise<void> => {
   try {
     // Marcar el dispositivo como bloqueado localmente
     await AsyncStorage.setItem(DEVICE_BLOCKED_KEY, "true");
-    // Marcar el dispositivo como bloqueado localmente
-    await AsyncStorage.setItem(DEVICE_BLOCKED_KEY, "true");
 
     // Obtener información del dispositivo
     const deviceInfo = {
@@ -356,7 +467,7 @@ export const blockDevice = async (reason: string): Promise<void> => {
 
     // Registrar evento de seguridad
     await logSecurityEvent({
-      type: "device_blocked",
+      type: SecurityEventType.DEVICE_BLOCKED,
       description: `Dispositivo bloqueado por: ${reason}`,
       timestamp: Date.now(),
       details: deviceInfo,
@@ -365,15 +476,14 @@ export const blockDevice = async (reason: string): Promise<void> => {
     // Actualizar estado en Firestore si el usuario está autenticado
     const user = getCurrentUser();
     if (user) {
-      await updateDoc(doc(firestore, "users", user.uid), {
+      // Usar directamente firestore
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, {
         deviceBlocked: true,
         blockedAt: new Date().toISOString(),
         blockReason: reason,
         deviceInfo: deviceInfo,
       });
-
-      // Enviar correo de notificación
-      await sendDeviceBlockedEmail(user.email!, deviceInfo);
     }
   } catch (error) {
     console.error("Error al bloquear dispositivo:", error);
@@ -394,7 +504,7 @@ export const unblockDevice = async (): Promise<void> => {
 
     // Registrar evento de seguridad
     await logSecurityEvent({
-      type: "device_unblocked",
+      type: SecurityEventType.DEVICE_UNBLOCKED,
       description: "Dispositivo desbloqueado",
       timestamp: Date.now(),
     });
@@ -402,7 +512,9 @@ export const unblockDevice = async (): Promise<void> => {
     // Actualizar estado en Firestore si el usuario está autenticado
     const user = getCurrentUser();
     if (user) {
-      await updateDoc(doc(firestore, "users", user.uid), {
+      // Usar directamente firestore
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, {
         deviceBlocked: false,
         unblockedAt: new Date().toISOString(),
       });
@@ -441,7 +553,7 @@ export const incrementFailedAttempts = async (): Promise<number> => {
 
     // Registrar el evento de seguridad
     await logSecurityEvent({
-      type: "FAILED_UNLOCK",
+      type: SecurityEventType.FAILED_UNLOCK,
       description: `Intento fallido de desbloqueo (${newAttempts}/${MAX_FAILED_ATTEMPTS})`,
       timestamp: Date.now(),
     });
@@ -542,7 +654,7 @@ export const startSecurityMonitoring = async (): Promise<boolean> => {
 
     // Registrar evento de seguridad
     await logSecurityEvent({
-      type: "monitoring_started",
+      type: SecurityEventType.SYSTEM_ALERT,
       description: "Monitoreo de seguridad iniciado",
       timestamp: Date.now(),
     });
@@ -567,7 +679,7 @@ export const stopSecurityMonitoring = async (): Promise<boolean> => {
 
     // Registrar evento de seguridad
     await logSecurityEvent({
-      type: "monitoring_stopped",
+      type: SecurityEventType.SYSTEM_ALERT,
       description: "Monitoreo de seguridad detenido",
       timestamp: Date.now(),
     });
@@ -602,16 +714,68 @@ export const getLastMonitoringCheck = async (): Promise<string | null> => {
 /**
  * Registra un evento de seguridad en Firestore
  */
-export const logSecurityEvent = async (event: SecurityEvent): Promise<void> => {
+export const logSecurityEvent = async (
+  eventData: Partial<SecurityEvent>
+): Promise<void> => {
   try {
     const user = getCurrentUser();
-    if (user) {
-      await addDoc(collection(firestore, "users", user.uid, "securityEvents"), {
-        ...event,
-        createdAt: serverTimestamp(),
-      });
-    }
+    if (!user) return;
+
+    const deviceId = await getDeviceId();
+
+    // Crear evento completo con todos los campos requeridos
+    const completeEvent: SecurityEvent = {
+      type: eventData.type || SecurityEventType.SYSTEM_ALERT,
+      description: eventData.description || "Evento de seguridad",
+      timestamp: eventData.timestamp || Date.now(),
+      deviceId: eventData.deviceId || deviceId,
+      userId: eventData.userId || user.uid,
+      severity: eventData.severity || "medium",
+      details: eventData.details || {},
+      resolved: eventData.resolved || false,
+      resolvedAt: eventData.resolvedAt || undefined,
+    };
+
+    // Guardar en colección de eventos del usuario
+    const eventsCollectionRef = collection(
+      firestore,
+      "users",
+      user.uid,
+      "securityEvents"
+    );
+    await addDoc(eventsCollectionRef, {
+      ...completeEvent,
+      createdAt: serverTimestamp(),
+    });
+
+    // También guardar en la colección global para acceso desde la web
+    await addDoc(collection(firestore, "securityEvents"), {
+      ...completeEvent,
+      createdAt: serverTimestamp(),
+    });
   } catch (error) {
     console.error("Error al registrar evento de seguridad:", error);
+  }
+};
+
+/**
+ * Obtener ID único del dispositivo
+ */
+export const getDeviceId = async (): Promise<string> => {
+  try {
+    // Intentar obtener ID existente
+    let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+
+    // Si no existe, crear uno nuevo
+    if (!deviceId) {
+      deviceId = `device-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+
+    return deviceId;
+  } catch (error) {
+    console.error("Error al obtener ID de dispositivo:", error);
+    // Fallback
+    return `device-${Date.now()}`;
   }
 };

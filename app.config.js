@@ -44,5 +44,9 @@ module.exports = {
     APP_ENV: process.env.APP_ENV,
     API_URL: process.env.API_URL,
   },
-  plugins: ["expo-build-properties"],
+  plugins: [
+    "expo-build-properties",
+    "expo-secure-store",
+    "expo-local-authentication",
+  ],
 };

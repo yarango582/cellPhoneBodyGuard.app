@@ -18,13 +18,15 @@ import SecurityScreen from "../screens/main/SecurityScreen";
 // Pantallas de seguridad
 import LockScreen from "../screens/security/LockScreen";
 import UnlockScreen from "../screens/security/UnlockScreen";
+import EnhancedLockScreen from "../screens/security/EnhancedLockScreen";
 import LockConfirmScreen from "../screens/security/LockConfirmScreen";
 import SecurityMonitorScreen from "../screens/security/SecurityMonitorScreen";
 
 // Servicios
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { isDeviceBlockedLocally } from "../services/securityService";
+import { isDeviceBlocked } from "../services/deviceSecurityService";
+const DEVICE_BLOCKED_KEY = "device_blocked";
 
 // Tipos de navegación
 type AuthStackParamList = {
@@ -44,6 +46,7 @@ type RootStackParamList = {
   Main: undefined;
   Lock: { reason?: string };
   Unlock: undefined;
+  EnhancedLockScreen: { reason?: string };
   UnlockScreen: undefined;
   LockConfirm: undefined;
   SecurityMonitor: undefined;
@@ -135,17 +138,29 @@ const AppNavigator = () => {
       // setLoading will be handled after block status is also checked
     });
 
-    // Check device block status
+    // Check device block status - verificar tanto en Firebase como localmente
     const checkDeviceBlockStatus = async () => {
       try {
-        const blocked = await isDeviceBlockedLocally();
-        setIsBlocked(blocked);
+        // Primero verificamos el valor almacenado localmente (más rápido)
+        const localBlockStatus = await AsyncStorage.getItem(DEVICE_BLOCKED_KEY);
+        
+        if (localBlockStatus === "true") {
+          setIsBlocked(true);
+        } else {
+          // Si no está bloqueado localmente, verificamos en Firebase
+          const firebaseBlockStatus = await isDeviceBlocked();
+          setIsBlocked(firebaseBlockStatus);
+          
+          // Actualizar el estado local para que coincida con Firebase
+          await AsyncStorage.setItem(DEVICE_BLOCKED_KEY, firebaseBlockStatus ? "true" : "false");
+        }
       } catch (error) {
         console.error("Error checking device block status:", error);
-        // Optionally set some error state here to inform the user
+        // Por seguridad, si hay un error, asumimos que está bloqueado
+        setIsBlocked(true);
       } finally {
-        // This ensures loading is false after both initial auth state is processed
-        // (onAuthStateChanged fires immediately) and block status is checked.
+        // Esto asegura que loading sea false después de que se procese el estado de autenticación inicial
+        // (onAuthStateChanged se dispara inmediatamente) y se verifique el estado de bloqueo.
         setIsLoading(false);
       }
     };
@@ -167,8 +182,12 @@ const AppNavigator = () => {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isBlocked ? (
-          // Si el dispositivo está bloqueado, mostrar pantalla de desbloqueo
-          <RootStack.Screen name="Unlock" component={UnlockScreen} />
+          // Si el dispositivo está bloqueado, mostrar pantalla de desbloqueo mejorada
+          <RootStack.Screen 
+            name="EnhancedLockScreen" 
+            component={EnhancedLockScreen}
+            options={{ gestureEnabled: false, headerShown: false }}
+          />
         ) : isAuthenticated ? (
           // Si está autenticado y no bloqueado, mostrar pantalla principal
           <RootStack.Screen name="Main" component={MainNavigator} />
@@ -186,6 +205,11 @@ const AppNavigator = () => {
         <RootStack.Screen
           name="Unlock"
           component={UnlockScreen}
+          options={{ gestureEnabled: false, headerShown: false }}
+        />
+        <RootStack.Screen
+          name="EnhancedLockScreen"
+          component={EnhancedLockScreen}
           options={{ gestureEnabled: false, headerShown: false }}
         />
         <RootStack.Screen

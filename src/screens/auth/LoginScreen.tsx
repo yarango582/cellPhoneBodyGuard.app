@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  BackHandler,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { loginUser } from "../../services/authService";
 import { styles } from "./styles/LoginScreenStyles";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type LoginScreenProps = {
   navigation: StackNavigationProp<any>;
@@ -26,6 +28,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Prevenir que el usuario pueda salir de la app con el botón de retroceso si está bloqueada
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Verificar si el dispositivo está bloqueado
+        AsyncStorage.getItem("device_blocked").then((isBlocked) => {
+          if (isBlocked === "true") {
+            // Si está bloqueado, no permitir salir de la app
+            Alert.alert(
+              "Dispositivo bloqueado",
+              "No puedes salir de la aplicación mientras el dispositivo está bloqueado."
+            );
+            return true; // Prevenir la acción por defecto
+          }
+          return false; // Permitir la acción por defecto
+        });
+        return true;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   const handleLogin = async () => {
     // Validar campos
@@ -43,8 +69,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      await loginUser(email, password);
-      // La navegación se maneja automáticamente en AppNavigator
+      const result = await loginUser(email, password);
+      
+      // Verificar si el dispositivo está bloqueado
+      if (result.isBlocked) {
+        // Navegar a la pantalla de bloqueo
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "EnhancedLockScreen", params: { reason: result.blockReason } }],
+        });
+      } else {
+        // La navegación se maneja automáticamente en AppNavigator para dispositivos no bloqueados
+      }
     } catch (error: any) {
       let errorMessage = "Error al iniciar sesión";
 
