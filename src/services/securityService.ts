@@ -25,6 +25,8 @@ const SECURITY_SETTINGS_KEY = "security_settings";
 const SUSPICIOUS_ACTIVITY_COUNT_KEY = "suspicious_activity_count";
 const DEVICE_BLOCKED_KEY = "device_blocked";
 const SECURITY_KEY = "security_key";
+const MONITORING_ACTIVE_KEY = "monitoring_active";
+const LAST_MONITORING_CHECK_KEY = "last_monitoring_check";
 
 // Interfaz para la configuración de seguridad
 export interface SecuritySettings {
@@ -198,6 +200,13 @@ export const incrementSuspiciousActivityCount = async (): Promise<number> => {
     let count = countStr ? parseInt(countStr, 10) : 0;
     count += 1;
     await AsyncStorage.setItem(SUSPICIOUS_ACTIVITY_COUNT_KEY, count.toString());
+
+    // Actualizar la hora de la última verificación
+    await AsyncStorage.setItem(
+      LAST_MONITORING_CHECK_KEY,
+      new Date().toISOString()
+    );
+
     return count;
   } catch (error) {
     console.error(
@@ -205,6 +214,44 @@ export const incrementSuspiciousActivityCount = async (): Promise<number> => {
       error
     );
     return 0;
+  }
+};
+
+/**
+ * Obtiene el contador actual de actividades sospechosas
+ */
+export const getSuspiciousActivityCount = async (): Promise<number> => {
+  try {
+    const countStr = await AsyncStorage.getItem(SUSPICIOUS_ACTIVITY_COUNT_KEY);
+    return countStr ? parseInt(countStr, 10) : 0;
+  } catch (error) {
+    console.error(
+      "Error al obtener contador de actividades sospechosas:",
+      error
+    );
+    return 0;
+  }
+};
+
+/**
+ * Reinicia el contador de actividades sospechosas
+ */
+export const resetSuspiciousActivityCount = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SUSPICIOUS_ACTIVITY_COUNT_KEY, "0");
+
+    // Registrar evento de seguridad
+    await logSecurityEvent({
+      type: "counter_reset",
+      description: "Contador de actividades sospechosas reiniciado manualmente",
+      timestamp: Date.now(),
+    });
+  } catch (error) {
+    console.error(
+      "Error al reiniciar contador de actividades sospechosas:",
+      error
+    );
+    throw error;
   }
 };
 
@@ -247,10 +294,53 @@ export const isDeviceBlockedLocally = async (): Promise<boolean> => {
 };
 
 /**
+ * Activa o desactiva el monitoreo de seguridad
+ */
+export const setMonitoringActive = async (active: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(
+      MONITORING_ACTIVE_KEY,
+      active ? "true" : "false"
+    );
+
+    // Registrar la última verificación
+    await AsyncStorage.setItem(
+      LAST_MONITORING_CHECK_KEY,
+      new Date().toISOString()
+    );
+
+    // Registrar el evento en Firestore
+    const user = getCurrentUser();
+    if (user) {
+      const securityEvent = {
+        type: active ? "monitoring_activated" : "monitoring_deactivated",
+        description: active
+          ? "Monitoreo de seguridad activado"
+          : "Monitoreo de seguridad desactivado",
+        timestamp: Date.now(),
+        userId: user.uid,
+        deviceInfo: {
+          name: Device.deviceName,
+          brand: Device.brand,
+          modelName: Device.modelName,
+        },
+      };
+
+      await addDoc(collection(firestore, "securityEvents"), securityEvent);
+    }
+  } catch (error) {
+    console.error("Error al cambiar estado del monitoreo:", error);
+    throw error;
+  }
+};
+
+/**
  * Bloquea el dispositivo
  */
 export const blockDevice = async (reason: string): Promise<void> => {
   try {
+    // Marcar el dispositivo como bloqueado localmente
+    await AsyncStorage.setItem(DEVICE_BLOCKED_KEY, "true");
     // Marcar el dispositivo como bloqueado localmente
     await AsyncStorage.setItem(DEVICE_BLOCKED_KEY, "true");
 
@@ -323,6 +413,57 @@ export const unblockDevice = async (): Promise<void> => {
   }
 };
 
+// Clave para almacenar intentos fallidos
+const FAILED_ATTEMPTS_KEY = "failed_unlock_attempts";
+const MAX_FAILED_ATTEMPTS = 5;
+
+/**
+ * Obtiene el número de intentos fallidos de desbloqueo
+ */
+export const getFailedAttempts = async (): Promise<number> => {
+  try {
+    const attemptsStr = await AsyncStorage.getItem(FAILED_ATTEMPTS_KEY);
+    return attemptsStr ? parseInt(attemptsStr, 10) : 0;
+  } catch (error) {
+    console.error("Error al obtener intentos fallidos:", error);
+    return 0;
+  }
+};
+
+/**
+ * Incrementa el contador de intentos fallidos
+ */
+export const incrementFailedAttempts = async (): Promise<number> => {
+  try {
+    const currentAttempts = await getFailedAttempts();
+    const newAttempts = currentAttempts + 1;
+    await AsyncStorage.setItem(FAILED_ATTEMPTS_KEY, newAttempts.toString());
+
+    // Registrar el evento de seguridad
+    await logSecurityEvent({
+      type: "FAILED_UNLOCK",
+      description: `Intento fallido de desbloqueo (${newAttempts}/${MAX_FAILED_ATTEMPTS})`,
+      timestamp: Date.now(),
+    });
+
+    return newAttempts;
+  } catch (error) {
+    console.error("Error al incrementar intentos fallidos:", error);
+    return 0;
+  }
+};
+
+/**
+ * Resetea el contador de intentos fallidos
+ */
+export const resetFailedAttempts = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(FAILED_ATTEMPTS_KEY, "0");
+  } catch (error) {
+    console.error("Error al resetear intentos fallidos:", error);
+  }
+};
+
 /**
  * Desbloquea el dispositivo con una clave de seguridad
  */
@@ -330,17 +471,131 @@ export const unblockDeviceWithKey = async (key: string): Promise<boolean> => {
   try {
     // Obtener la clave de seguridad almacenada
     const storedKey = await AsyncStorage.getItem(SECURITY_KEY);
+    console.log("Clave almacenada:", storedKey);
+    console.log("Clave ingresada:", key);
 
-    // Verificar si la clave es correcta
-    if (storedKey === key) {
+    // Eliminar espacios y formatear ambas claves para comparación
+    const formattedStoredKey = storedKey ? storedKey.replace(/\s+/g, "") : "";
+    const formattedInputKey = key.replace(/\s+/g, "");
+
+    // Verificar si la clave es correcta (comparación insensible a espacios)
+    if (formattedStoredKey === formattedInputKey) {
+      console.log("Clave correcta, desbloqueando dispositivo...");
       await unblockDevice();
+      await resetFailedAttempts();
       return true;
+    }
+
+    // Si la clave es incorrecta, incrementar contador de intentos fallidos
+    const failedAttempts = await incrementFailedAttempts();
+    console.log(
+      `Clave incorrecta. Intento fallido ${failedAttempts}/${MAX_FAILED_ATTEMPTS}`
+    );
+
+    // Si se alcanza el máximo de intentos, bloquear por más tiempo
+    if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      console.log("Máximo de intentos alcanzado, bloqueando por más tiempo...");
+      // Aquí podrías implementar un bloqueo más severo o enviar una alerta
     }
 
     return false;
   } catch (error) {
     console.error("Error al desbloquear con clave:", error);
     return false;
+  }
+};
+
+/**
+ * Verifica si el monitoreo de seguridad está activo
+ */
+export const isMonitoringActive = async (): Promise<boolean> => {
+  try {
+    // Verificar si el monitoreo está activo en el almacenamiento local
+    const monitoringStatus = await AsyncStorage.getItem(MONITORING_ACTIVE_KEY);
+
+    // Si no hay un estado guardado, verificamos la configuración de seguridad
+    if (!monitoringStatus) {
+      const settings = await getSecuritySettings();
+      return settings.enabled;
+    }
+
+    return monitoringStatus === "true";
+  } catch (error) {
+    console.error("Error al verificar estado del monitoreo:", error);
+    return false;
+  }
+};
+
+/**
+ * Inicia el monitoreo de seguridad
+ */
+export const startSecurityMonitoring = async (): Promise<boolean> => {
+  try {
+    // Marcar el monitoreo como activo
+    await AsyncStorage.setItem(MONITORING_ACTIVE_KEY, "true");
+
+    // Registrar la hora de inicio
+    await AsyncStorage.setItem(
+      LAST_MONITORING_CHECK_KEY,
+      new Date().toISOString()
+    );
+
+    // Registrar evento de seguridad
+    await logSecurityEvent({
+      type: "monitoring_started",
+      description: "Monitoreo de seguridad iniciado",
+      timestamp: Date.now(),
+    });
+
+    // Registrar tarea en segundo plano
+    await registerBackgroundTask();
+
+    return true;
+  } catch (error) {
+    console.error("Error al iniciar monitoreo de seguridad:", error);
+    return false;
+  }
+};
+
+/**
+ * Detiene el monitoreo de seguridad
+ */
+export const stopSecurityMonitoring = async (): Promise<boolean> => {
+  try {
+    // Marcar el monitoreo como inactivo
+    await AsyncStorage.setItem(MONITORING_ACTIVE_KEY, "false");
+
+    // Registrar evento de seguridad
+    await logSecurityEvent({
+      type: "monitoring_stopped",
+      description: "Monitoreo de seguridad detenido",
+      timestamp: Date.now(),
+    });
+
+    // Desregistrar tarea en segundo plano
+    await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SECURITY_TASK);
+
+    return true;
+  } catch (error) {
+    console.error("Error al detener monitoreo de seguridad:", error);
+    return false;
+  }
+};
+
+/**
+ * Obtiene la hora de la última verificación de seguridad
+ */
+export const getLastMonitoringCheck = async (): Promise<string | null> => {
+  try {
+    const lastCheck = await AsyncStorage.getItem(LAST_MONITORING_CHECK_KEY);
+    if (!lastCheck) return null;
+
+    // Formatear la fecha para mostrarla de manera amigable
+    const date = new Date(lastCheck);
+    return date.toLocaleString();
+  } catch (error) {
+    console.error("Error al obtener última verificación:", error);
+    return null;
   }
 };
 

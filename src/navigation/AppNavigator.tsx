@@ -18,6 +18,8 @@ import SecurityScreen from "../screens/main/SecurityScreen";
 // Pantallas de seguridad
 import LockScreen from "../screens/security/LockScreen";
 import UnlockScreen from "../screens/security/UnlockScreen";
+import LockConfirmScreen from "../screens/security/LockConfirmScreen";
+import SecurityMonitorScreen from "../screens/security/SecurityMonitorScreen";
 
 // Servicios
 import { onAuthStateChanged } from "firebase/auth";
@@ -40,8 +42,11 @@ type MainTabParamList = {
 type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
-  Lock: undefined;
+  Lock: { reason?: string };
   Unlock: undefined;
+  UnlockScreen: undefined;
+  LockConfirm: undefined;
+  SecurityMonitor: undefined;
 };
 
 // Navegadores
@@ -171,11 +176,35 @@ const AppNavigator = () => {
           // Si no está autenticado, mostrar pantallas de autenticación
           <RootStack.Screen name="Auth" component={AuthNavigator} />
         )}
-        {/* Pantalla de bloqueo que se puede mostrar en cualquier momento */}
+
+        {/* Pantallas de seguridad */}
         <RootStack.Screen
           name="Lock"
           component={LockScreen}
-          options={{ gestureEnabled: false }}
+          options={{ gestureEnabled: false, headerShown: false }}
+        />
+        <RootStack.Screen
+          name="Unlock"
+          component={UnlockScreen}
+          options={{ gestureEnabled: false, headerShown: false }}
+        />
+        <RootStack.Screen
+          name="LockConfirm"
+          component={LockConfirmScreen}
+          options={{
+            title: "Confirmar Bloqueo",
+            headerStyle: { backgroundColor: "#f8f8f8" },
+            headerTintColor: "#333",
+          }}
+        />
+        <RootStack.Screen
+          name="SecurityMonitor"
+          component={SecurityMonitorScreen}
+          options={{
+            title: "Monitor de Seguridad",
+            headerStyle: { backgroundColor: "#f8f8f8" },
+            headerTintColor: "#333",
+          }}
         />
       </RootStack.Navigator>
     </NavigationContainer>

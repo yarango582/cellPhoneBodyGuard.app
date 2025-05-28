@@ -12,22 +12,27 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
+import { useNavigation } from "@react-navigation/native";
 import {
   getSecuritySettings,
   updateSecuritySettings,
   SecuritySettings,
   blockDevice,
   unblockDevice,
-  isDeviceBlockedLocally
+  isDeviceBlockedLocally,
+  isMonitoringActive,
 } from "../../services/securityService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCurrentUser } from "../../services/authService";
 import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "../../config/firebase";
+import { styles } from "./styles/SecurityScreenStyles";
 
 const SECURITY_KEY = "security_key";
 
 const SecurityScreen: React.FC = () => {
+  const navigation = useNavigation();
+
   const [settings, setSettings] = useState<SecuritySettings>({
     enabled: false,
     suspiciousAttemptsThreshold: 3,
@@ -39,14 +44,26 @@ const SecurityScreen: React.FC = () => {
   const [isBlocked, setIsBlocked] = useState(false);
   const [securityKey, setSecurityKey] = useState("");
   const [showSecurityKey, setShowSecurityKey] = useState(false);
+  const [monitoringActive, setMonitoringActive] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Verificar si el monitoreo está activo
+  const checkMonitoringStatus = async () => {
+    try {
+      const active = await isMonitoringActive();
+      setMonitoringActive(active);
+    } catch (error) {
+      console.error("Error al verificar estado del monitoreo:", error);
+    }
+  };
 
   useEffect(() => {
     loadSettings();
     checkBlockStatus();
     loadSecurityKey();
+    checkMonitoringStatus();
   }, []);
 
   const loadSettings = async () => {
@@ -218,36 +235,13 @@ const SecurityScreen: React.FC = () => {
 
   // Función para bloquear manualmente el dispositivo
   const handleBlockDevice = () => {
-    Alert.alert(
-      "Bloquear dispositivo",
-      "¿Estás seguro de que quieres bloquear tu dispositivo? Necesitarás tu clave de seguridad para desbloquearlo.",
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-        {
-          text: "Bloquear",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await blockDevice("manual_block");
-              setIsBlocked(true);
-              Alert.alert(
-                "Dispositivo bloqueado",
-                "Tu dispositivo ha sido bloqueado. Usa tu clave de seguridad para desbloquearlo."
-              );
-            } catch (error) {
-              console.error("Error al bloquear dispositivo:", error);
-              Alert.alert("Error", "No se pudo bloquear el dispositivo");
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    // Usar la nueva pantalla de confirmación de bloqueo
+    navigation.navigate("LockConfirm" as never);
+  };
+
+  // Función para acceder al monitor de seguridad
+  const handleOpenSecurityMonitor = () => {
+    navigation.navigate("SecurityMonitor" as never);
   };
 
   // Función para desbloquear manualmente el dispositivo
@@ -320,6 +314,42 @@ const SecurityScreen: React.FC = () => {
               <Ionicons name="eye-outline" size={20} color="#007AFF" />
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* Sección de monitor de seguridad */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Monitor de seguridad</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                monitoringActive ? styles.statusActive : styles.statusInactive,
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {monitoringActive ? "ACTIVO" : "INACTIVO"}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.settingDescription}>
+            Accede al panel de monitoreo para ver el estado de seguridad de tu
+            dispositivo y configurar opciones avanzadas.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.monitorButton]}
+            onPress={handleOpenSecurityMonitor}
+          >
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={20}
+              color="#FFFFFF"
+            />
+            <Text style={styles.actionButtonText}>
+              Abrir monitor de seguridad
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Sección de bloqueo manual */}
@@ -514,217 +544,5 @@ const SecurityScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8f8f8",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#666",
-  },
-  scrollView: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 5,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  disabledCard: {
-    opacity: 0.7,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  sliderContainer: {
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  sliderLabel: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 10,
-  },
-  slider: {
-    width: "100%",
-    height: 40,
-  },
-  sliderLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: -5,
-  },
-  sliderMinLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
-  sliderMaxLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
-  infoBox: {
-    flexDirection: "row",
-    backgroundColor: "#E3F2FD",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#333",
-    marginLeft: 10,
-    lineHeight: 20,
-  },
-  behaviorItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  behaviorInfo: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  behaviorTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 2,
-  },
-  behaviorDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  saveButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  savingButton: {
-    backgroundColor: "#80BDFF",
-  },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  securityKeyContainer: {
-    backgroundColor: "#F8F9FA",
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  securityKey: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333333",
-    textAlign: "center",
-    letterSpacing: 1,
-  },
-  viewKeyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F0F8FF",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  viewKeyText: {
-    color: "#007AFF",
-    fontSize: 16,
-    fontWeight: "500",
-    marginRight: 8,
-  },
-  hideKeyButton: {
-    backgroundColor: "#E0E0E0",
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 10,
-    alignSelf: "center",
-  },
-  hideKeyText: {
-    color: "#333333",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 15,
-  },
-  blockButton: {
-    backgroundColor: "#DC3545",
-  },
-  unblockButton: {
-    backgroundColor: "#28A745",
-  },
-  actionButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-});
 
 export default SecurityScreen;
